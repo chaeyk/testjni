@@ -18,17 +18,8 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Initialize"
-        android:id="@+id/btnInit"
-        android:layout_below="@+id/textView"
-        android:layout_alignParentLeft="true"
-        android:layout_marginTop="35dp" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:text="Crash"
         android:id="@+id/btnCrash"
-        android:layout_below="@+id/btnInit"
-        android:layout_alignParentLeft="true" />
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/textView" />
 </RelativeLayout>
