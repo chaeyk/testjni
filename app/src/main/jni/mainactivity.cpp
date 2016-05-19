@@ -9,6 +9,9 @@
 #include <dlfcn.h>
 #include <cxxabi.h>
 
+#include <pthread.h>
+
+#include "HttpClient.h"
 //#include "demangle.h"
 
 struct android_backtrace_state
@@ -79,21 +82,23 @@ void dump_stack(void)
     __android_log_print(ANDROID_LOG_INFO, "testjni", "android stack dump done");
 }
 
-static JNIEnv* g_env;
-static jobject g_obj;
-static jmethodID nativeCrashed;
-
 struct sigaction oldhandler;
+
+void testNative() {
+    __android_log_print(ANDROID_LOG_INFO, "testjni", "calling http");
+    HttpGet("52.193.50.148", "/hello");
+}
 
 void sighandler(int signo, struct siginfo *info, void *reserved)
 {
     __android_log_print(ANDROID_LOG_INFO, "testjni", "got handler");
 
-    g_env->CallVoidMethod(g_obj, nativeCrashed);
-    dump_stack();
-
     //oldhandler.sa_handler(signo);
     oldhandler.sa_sigaction(signo, info, reserved);
+
+    testNative();
+
+    dump_stack();
 }
 
 void func2() {
@@ -106,23 +111,18 @@ void func1() {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_chaeyk_testjni_MainActivity_makeCrash(JNIEnv *env, jobject instance) {
-    g_env = env;
-    g_obj = instance;
+Java_com_example_chaeyk_testjni_MainActivity_test(JNIEnv *env, jobject instance) {
+    testNative();
+}
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_example_chaeyk_testjni_MainActivity_makeCrash(JNIEnv *env, jobject instance) {
     func1();
     //((char*)("abcd"))[0] = 'A';
 }
 
 extern "C" JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *jvm, void *reserved) {
-    JNIEnv* env;
-    if (jvm->GetEnv((void **)&env, JNI_VERSION_1_2))
-        return JNI_ERR;
-
-    jclass cls = env->FindClass("com/example/chaeyk/testjni/MainActivity");
-    nativeCrashed = env->GetMethodID(cls, "nativeCrashed", "()V");
-
     struct sigaction handler;
     memset(&handler, 0, sizeof(handler));
     handler.sa_sigaction = &sighandler;

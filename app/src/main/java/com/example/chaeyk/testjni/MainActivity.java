@@ -1,10 +1,15 @@
 package com.example.chaeyk.testjni;
 
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -20,20 +25,18 @@ public class MainActivity extends AppCompatActivity {
                 makeCrash();
             }
         });
-    }
 
-    public void nativeCrashed()
-    {
-        // jellybean에서 여기가 실행은 되는데 출력은 안된다.
-        Log.d("testjni", "execute java code");
-
-        // jellybean에서는 이거 수행하다가 에러가 난다.
-        // W/ActivityManager: Exception thrown during pause
-        //                    android.os.DeadObjectException
-        new RuntimeException("crashed here").printStackTrace();
+        Button btnTest = (Button) findViewById(R.id.btnTest);
+        btnTest.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                test();
+            }
+        });
     }
 
     public native void makeCrash();
+    public native void test();
 
     static {
         System.loadLibrary("hello-jni");

@@ -21,8 +21,6 @@ model {
             toolchain = 'clang'
             //CFlags.addAll(['-Wall'])
             cppFlags.add("-fexceptions")
-            cppFlags.add("-O0")
-            cppFlags.add("-g")
             ldLibs.addAll(['log'])
             stl 'gnustl_static'
         }
