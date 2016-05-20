@@ -4,84 +4,91 @@
 
 #include "HttpClient.h"
 
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <ctype.h>
+//#include <string.h>
+//#include <fcntl.h>
+//#include <ctype.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <sys/types.h>
-#include <sys/stat.h>
+//#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #include <android/log.h>
 
-int GetHttpResponseHead(int sock,char *buf,int size)
-{
-    int i;
-    char *code,*status;
-    memset(buf,0,size);
-    for(i=0; i<size-1; i++){
-        if(recv(sock,buf+i,1,0)!=1){
-            perror("recv error");
-            return -1;
-        }
-        if(strstr(buf,"\r\n\r\n"))
-            break;
-    }
-    if(i >= size-1){
-        puts("Http response head too long.");
-        return -2;
-    }
-    code=strstr(buf," 200 ");
-    status=strstr(buf,"\r\n");
-    if(!code || code>status){
-        *status=0;
-        printf("Bad http response:\"%s\"\n",buf);
-        return -3;
-    }
-    return i;
-}
-
-int HttpGet(const char *server,const char *url)
-{
+int HttpGet(const char *server, int port, const char *url) {
     __android_log_print(ANDROID_LOG_INFO, "-----from--jni-------", "Enter HttpGet function!");
-    int sock=socket(PF_INET,SOCK_STREAM,0);
-    __android_log_print(ANDROID_LOG_INFO, "-----from--jni-------", "%d",sock);
-    struct sockaddr_in peerAddr;
-    char buf[2048];
+
+    /*
+    int sock = socket(PF_INET, SOCK_STREAM, 0);
+    __android_log_print(ANDROID_LOG_INFO, "-----from--jni-------", "%d", sock);
+    */
+
     int ret;
 
-    peerAddr.sin_family=AF_INET;
-    peerAddr.sin_port=htons(3009);
-    peerAddr.sin_addr.s_addr=inet_addr(server);
-    ret=connect(sock,(struct sockaddr *)&peerAddr,sizeof(peerAddr));
-    if(ret != 0){
-        perror("connect failed");
-        close(sock);
+    char port_str[10];
+    snprintf(port_str, sizeof(port_str), "%d", port);
+
+    struct addrinfo hints;
+    struct addrinfo *result, *rp;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = 0;
+    ret = getaddrinfo(server, port_str, &hints, &result);
+    if (ret != 0) {
+        __android_log_print(ANDROID_LOG_ERROR, "-----from--jni-------", "resolv failed!");
         return -1;
     }
+
+    /* getaddrinfo() returns a list of address structures.
+       Try each address until we successfully bind(2).
+       If socket(2) (or bind(2)) fails, we (close the socket
+       and) try the next address. */
+    int sock;
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        __android_log_print(ANDROID_LOG_DEBUG, "testjni", "family-%d sock-%d protocol-%d ip-%s",
+                            (int) rp->ai_family, (int) rp->ai_socktype, (int) rp->ai_protocol, inet_ntoa(((struct sockaddr_in*) rp->ai_addr)->sin_addr));
+
+        sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sock == -1)
+            continue;
+        ret = connect(sock, rp->ai_addr, rp->ai_addrlen);
+        if (ret != 0) {
+            __android_log_print(ANDROID_LOG_ERROR, "-----from--jni-------", "connect failed: %d %s", ret, strerror(errno));
+            close(sock);
+            continue;
+        }
+
+        break;
+    }
+    freeaddrinfo(result);
+    if (rp == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR, "-----from--jni-------", "all connect failed!");
+        return -1;
+    }
+
+    char buf[2048];
     sprintf(buf,
             "GET %s HTTP/1.1\r\n"
-                    "Accept: */*\r\n"
-                    "User-Agent: bbm-crash-handler\r\n"
-                    "Host: %s\r\n"
-                    "Connection: Close\r\n\r\n",
-            url,server);
-    send(sock,buf,strlen(buf),0);
-    if(GetHttpResponseHead(sock,buf,sizeof(buf))<1){
-        close(sock);
-        return -1;
-    }
+            "Accept: */*\r\n"
+            "User-Agent: bbm-crash-handler\r\n"
+            "Host: %s\r\n"
+            "Connection: Close\r\n\r\n",
+            url,
+            server);
+    send(sock, buf, strlen(buf), 0);
+
     __android_log_print(ANDROID_LOG_INFO, "-----from--jni-------", "Enter HttpGet function's while!");
-    while((ret=recv(sock,buf,sizeof(buf),0)) > 0)
-    {
-        __android_log_print(ANDROID_LOG_INFO, "-----from--jni-------", "hello, this is my number %s log message!", buf);
+    while ((ret = recv(sock, buf, sizeof(buf) - 1, 0)) > 0) {
+        buf[ret] = 0;
+        __android_log_print(ANDROID_LOG_INFO, "-----from--jni-------", "%s", buf);
     }
-    shutdown(sock,SHUT_RDWR);
+    shutdown(sock, SHUT_RDWR);
     close(sock);
 
     return 0;

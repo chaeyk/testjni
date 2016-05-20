@@ -86,7 +86,7 @@ struct sigaction oldhandler;
 
 void testNative() {
     __android_log_print(ANDROID_LOG_INFO, "testjni", "calling http");
-    HttpGet("52.193.50.148", "/hello");
+    HttpGet("dev1.idolchamp.com", 3009, "/hello");
 }
 
 void sighandler(int signo, struct siginfo *info, void *reserved)

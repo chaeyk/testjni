@@ -5,6 +5,6 @@
 #ifndef TESTJNI_HTTPCLIENT_H
 #define TESTJNI_HTTPCLIENT_H
 
-int HttpGet(const char* server, const char* url);
+int HttpGet(const char *server, int port, const char *url);
 
 #endif //TESTJNI_HTTPCLIENT_H
